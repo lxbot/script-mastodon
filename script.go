@@ -291,14 +291,20 @@ func onUpdate(status *mastodon.Status) {
 			text := "@" + status.Account.Acct + " の"
 			if status.Reblog != nil {
 				text += "ブースト: "
+				if status.Reblog.URL != "" {
+					text += status.Reblog.URL
+				} else {
+					text += status.Reblog.URI
+				}
 			} else {
 				text += "トゥート: "
+				if status.URL != "" {
+					text += status.URL
+				} else {
+					text += status.URI
+				}
 			}
-			if status.URL != "" {
-				text += status.URL
-			} else {
-				text += status.URI
-			}
+
 			m, err := msg.SetText(text).Send().ToMap()
 			if err == nil {
 				*ch <- m
