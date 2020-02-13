@@ -6,6 +6,7 @@ import (
 	"github.com/mattn/go-mastodon"
 	"github.com/mohemohe/temple"
 	"log"
+	"net/url"
 	"os"
 	"plugin"
 	"strings"
@@ -32,8 +33,8 @@ func Boot(s *plugin.Plugin, c *chan M) {
 
 	initStore()
 
-	url := os.Getenv("LXBOT_MASTODON_BASE_URL")
-	if url == "" {
+	u := os.Getenv("LXBOT_MASTODON_BASE_URL")
+	if u == "" {
 		log.Fatalln("invalid url:", "'LXBOT_MASTODON_BASE_URL' にAPI URLを設定してください")
 	}
 	token := os.Getenv("LXBOT_MASTODON_ACCESS_TOKEN")
@@ -128,8 +129,16 @@ func handleInternal(msg *lxlib.LXMessage) {
 
 		switch args[1] {
 		case "add":
+			t := args[2]
+			acct := t
+			if strings.HasPrefix(t, "https://") {
+				if u, err := url.Parse(t); err == nil {
+					user := strings.Split(u.Path, "/")[1]
+					acct = user + "@" + u.Host
+				}
+			}
+			acct = strings.TrimPrefix(acct, "@")
 
-			acct := strings.TrimPrefix(args[2], "@")
 			mode := strings.ToLower(args[3])
 
 			log.Println("add")
