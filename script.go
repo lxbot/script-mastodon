@@ -41,14 +41,13 @@ func Boot(s *plugin.Plugin, c *chan M) {
 	if token == "" {
 		log.Fatalln("invalid token:", "'LXBOT_MASTODON_ACCESS_TOKEN' にアクセストークンを設定してください")
 	}
-	client = mastodon.NewClient(&mastodon.Config{
-		Server:      os.Getenv("LXBOT_MASTODON_BASE_URL"),
-		AccessToken: os.Getenv("LXBOT_MASTODON_ACCESS_TOKEN"),
-	})
-	ws := client.NewWSClient()
 	connected = false
 	reconnectCh = make(chan int)
-	go connect(ws)
+	go func() {
+		for {
+			connect()
+		}
+	}()
 }
 
 func Help() string {
@@ -81,6 +80,14 @@ func OnMessage() []func(M) M {
 			return nil
 		},
 	}
+}
+
+func createWSClient() *mastodon.WSClient {
+	client = mastodon.NewClient(&mastodon.Config{
+		Server:      os.Getenv("LXBOT_MASTODON_BASE_URL"),
+		AccessToken: os.Getenv("LXBOT_MASTODON_ACCESS_TOKEN"),
+	})
+	return client.NewWSClient()
 }
 
 func handleInternal(msg *lxlib.LXMessage) {
@@ -172,12 +179,12 @@ func reconnect(msg *lxlib.LXMessage) {
 	msg.SetText("`" + url + "/api/v1/streaming/?stream=user` に再接続しました")
 }
 
-func connect(client *mastodon.WSClient) {
+func connect() {
+	client := createWSClient()
 	event, err := client.StreamingWSUser(context.Background())
 	if err != nil {
 		log.Println(err)
 		time.Sleep(10 * time.Second)
-		go connect(client)
 		return
 	}
 
@@ -208,8 +215,6 @@ LOOP:
 	}
 	connected = false
 	log.Println("exits streaming loop")
-
-	go connect(client)
 }
 
 func add(msg *lxlib.LXMessage, acct string, mode string) {
