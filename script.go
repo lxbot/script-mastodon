@@ -165,25 +165,25 @@ func handleInternal(msg *lxlib.LXMessage) {
 }
 
 func status(msg *lxlib.LXMessage) {
-	url := os.Getenv("LXBOT_MASTODON_BASE_URL")
+	u := os.Getenv("LXBOT_MASTODON_BASE_URL")
 	if connected {
-		msg.SetText("`" + url + "/api/v1/streaming/?stream=user` に接続しています")
+		msg.SetText("`" + u + "/api/v1/streaming/?stream=user` に接続しています")
 	} else {
-		msg.SetText("`" + url + "/api/v1/streaming/?stream=user` から切断しています")
+		msg.SetText("`" + u + "/api/v1/streaming/?stream=user` から切断しています（再接続中かも？）")
 	}
 }
 
 func reconnect(msg *lxlib.LXMessage) {
 	reconnectCh <- 1
-	url := os.Getenv("LXBOT_MASTODON_BASE_URL")
-	msg.SetText("`" + url + "/api/v1/streaming/?stream=user` に再接続しました")
+	u := os.Getenv("LXBOT_MASTODON_BASE_URL")
+	msg.SetText("`" + u + "/api/v1/streaming/?stream=user` に再接続しました")
 }
 
 func connect() {
 	client := createWSClient()
 	event, err := client.StreamingWSUser(context.Background())
 	if err != nil {
-		log.Println(err)
+		log.Println("StreamingWSUser error:", err)
 		time.Sleep(10 * time.Second)
 		return
 	}
@@ -194,8 +194,10 @@ LOOP:
 	for {
 		select {
 		case e := <-event:
+			log.Println("onEvent:", e)
 			switch e.(type) {
 			case *mastodon.UpdateEvent:
+				log.Println("UpdateEvent:", e)
 				ue := e.(*mastodon.UpdateEvent)
 				onUpdate(ue.Status)
 				break
@@ -210,6 +212,7 @@ LOOP:
 				break LOOP
 			}
 		case <-reconnectCh:
+			log.Println("reconnectCh received")
 			break LOOP
 		}
 	}
